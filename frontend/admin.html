@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metronome — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --border: #272727;
+    --accent: #e8c97d;
+    --accent-dim: #7a6b3a;
+    --text: #f0ede6;
+    --text-muted: #5a5a5a;
+    --red: #e07070;
+    --green: #70c090;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 40px 16px;
+  }
+
+  .page {
+    max-width: 680px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 2rem;
+    color: var(--text);
+  }
+
+  header a {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    transition: color 0.2s;
+  }
+  header a:hover { color: var(--accent); }
+
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.2rem;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  /* Form */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 100px 100px;
+    gap: 8px;
+    align-items: end;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+
+  .field input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 10px 12px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--accent-dim); }
+  .field input::placeholder { color: var(--text-muted); }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    padding: 10px 16px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-add { background: var(--accent); color: #0e0e0e; }
+  .btn-add:hover { background: #f0d890; }
+
+  .btn-save { background: var(--green); color: #0e0e0e; font-size: 0.72rem; padding: 6px 12px; }
+  .btn-save:hover { background: #80d0a0; }
+
+  .btn-cancel { background: var(--border); color: var(--text-muted); font-size: 0.72rem; padding: 6px 12px; }
+  .btn-cancel:hover { background: #333; color: var(--text); }
+
+  .btn-delete { background: transparent; color: var(--text-muted); border: 1px solid var(--border); font-size: 0.7rem; padding: 5px 10px; }
+  .btn-delete:hover { color: var(--red); border-color: var(--red); }
+
+  .form-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.78rem;
+    padding: 12px 20px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    z-index: 100;
+    letter-spacing: 0.04em;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Song list */
+  .song-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border);
+  }
+
+  .song-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px auto;
+    gap: 0;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+  }
+  .song-row:last-child { border-bottom: none; }
+
+  .song-row.header-row {
+    background: #111;
+  }
+
+  .song-row .cell {
+    padding: 12px 14px;
+    font-size: 0.82rem;
+  }
+
+  .song-row.header-row .cell {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    padding: 10px 14px;
+  }
+
+  .song-row .cell.actions {
+    display: flex;
+    gap: 6px;
+    padding: 8px 14px;
+    justify-content: flex-end;
+  }
+
+  /* Inline edit */
+  .song-row.editing input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--accent-dim);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    outline: none;
+    width: 100%;
+    padding: 0;
+  }
+
+  .empty-state {
+    padding: 32px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Admin</h1>
+    <div style="display:flex;gap:20px;align-items:center">
+      <a href="/">← Back to Metronome</a>
+      <a href="/logout" style="color:var(--red);border-color:var(--red)">Sign out</a>
+    </div>
+  </header>
+
+  <!-- Add Song Form -->
+  <div>
+    <div class="section-title">Add New Song</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Song Title</label>
+        <input type="text" id="newTitle" placeholder="e.g. Yesterday" />
+      </div>
+      <div class="field">
+        <label>BPM</label>
+        <input type="number" id="newBpm" placeholder="120" min="20" max="300" />
+      </div>
+      <div class="field">
+        <label>Fade (s)</label>
+        <input type="number" id="newFade" placeholder="30" min="1" max="600" />
+      </div>
+    </div>
+    <div class="form-row-actions" style="margin-top:12px">
+      <button class="btn btn-add" id="addBtn">+ Add Song</button>
+    </div>
+  </div>
+
+  <!-- Song List -->
+  <div>
+    <div class="section-title">All Songs</div>
+    <div class="song-list" id="songList">
+      <div class="song-row header-row">
+        <div class="cell">Title</div>
+        <div class="cell">BPM</div>
+        <div class="cell">Fade (s)</div>
+        <div class="cell"></div>
+      </div>
+      <div class="empty-state" id="emptyState">Loading songs…</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+async function loadSongs() {
+  const res = await fetch(`${API}/api/songs`);
+  const songs = await res.json();
+  renderSongs(songs);
+}
+
+function renderSongs(songs) {
+  const list = document.getElementById('songList');
+  // Keep header row
+  list.innerHTML = `
+    <div class="song-row header-row">
+      <div class="cell">Title</div>
+      <div class="cell">BPM</div>
+      <div class="cell">Fade (s)</div>
+      <div class="cell"></div>
+    </div>
+  `;
+  if (!songs.length) {
+    list.innerHTML += `<div class="empty-state">No songs yet. Add one above.</div>`;
+    return;
+  }
+  songs.forEach(song => {
+    list.appendChild(buildSongRow(song));
+  });
+}
+
+function buildSongRow(song) {
+  const row = document.createElement('div');
+  row.className = 'song-row';
+  row.dataset.id = song.id;
+
+  row.innerHTML = `
+    <div class="cell title-cell">${escHtml(song.title)}</div>
+    <div class="cell bpm-cell">${song.bpm}</div>
+    <div class="cell fade-cell">${song.fade_out_seconds}</div>
+    <div class="cell actions">
+      <button class="btn btn-save" style="display:none" data-action="save">Save</button>
+      <button class="btn btn-cancel" style="display:none" data-action="cancel">Cancel</button>
+      <button class="btn btn-delete" data-action="edit">Edit</button>
+      <button class="btn btn-delete" data-action="delete">Delete</button>
+    </div>
+  `;
+
+  row.addEventListener('click', async (e) => {
+    const action = e.target.dataset.action;
+    if (!action) return;
+
+    if (action === 'edit') {
+      enterEditMode(row, song);
+    } else if (action === 'cancel') {
+      exitEditMode(row, song);
+    } else if (action === 'save') {
+      await saveRow(row, song);
+    } else if (action === 'delete') {
+      if (!confirm(`Delete "${song.title}"?`)) return;
+      await fetch(`${API}/api/songs/${song.id}`, { method: 'DELETE' });
+      showToast('Song deleted');
+      loadSongs();
+    }
+  });
+
+  return row;
+}
+
+function enterEditMode(row, song) {
+  row.classList.add('editing');
+  row.querySelector('.title-cell').innerHTML = `<input type="text" class="edit-title" value="${escHtml(song.title)}" />`;
+  row.querySelector('.bpm-cell').innerHTML = `<input type="number" class="edit-bpm" value="${song.bpm}" min="20" max="300" style="width:60px" />`;
+  row.querySelector('.fade-cell').innerHTML = `<input type="number" class="edit-fade" value="${song.fade_out_seconds}" min="1" max="600" style="width:60px" />`;
+  row.querySelector('[data-action="save"]').style.display = '';
+  row.querySelector('[data-action="cancel"]').style.display = '';
+  row.querySelector('[data-action="edit"]').style.display = 'none';
+  row.querySelector('[data-action="delete"]').style.display = 'none';
+}
+
+function exitEditMode(row, song) {
+  row.classList.remove('editing');
+  row.querySelector('.title-cell').textContent = song.title;
+  row.querySelector('.bpm-cell').textContent = song.bpm;
+  row.querySelector('.fade-cell').textContent = song.fade_out_seconds;
+  row.querySelector('[data-action="save"]').style.display = 'none';
+  row.querySelector('[data-action="cancel"]').style.display = 'none';
+  row.querySelector('[data-action="edit"]').style.display = '';
+  row.querySelector('[data-action="delete"]').style.display = '';
+}
+
+async function saveRow(row, song) {
+  const title = row.querySelector('.edit-title').value.trim();
+  const bpm = parseInt(row.querySelector('.edit-bpm').value);
+  const fade = parseInt(row.querySelector('.edit-fade').value);
+  if (!title || !bpm || !fade) { showToast('All fields required'); return; }
+
+  const res = await fetch(`${API}/api/songs/${song.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, bpm, fade_out_seconds: fade })
+  });
+  const updated = await res.json();
+  showToast('Song updated');
+  loadSongs();
+}
+
+// Add song
+document.getElementById('addBtn').addEventListener('click', async () => {
+  const title = document.getElementById('newTitle').value.trim();
+  const bpm = parseInt(document.getElementById('newBpm').value);
+  const fade = parseInt(document.getElementById('newFade').value) || 30;
+
+  if (!title || !bpm) { showToast('Title and BPM are required'); return; }
+  if (bpm < 20 || bpm > 300) { showToast('BPM must be between 20 and 300'); return; }
+
+  await fetch(`${API}/api/songs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, bpm, fade_out_seconds: fade })
+  });
+
+  document.getElementById('newTitle').value = '';
+  document.getElementById('newBpm').value = '';
+  document.getElementById('newFade').value = '';
+  showToast('Song added!');
+  loadSongs();
+});
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+loadSongs();
+</script>
+</body>
+</html>

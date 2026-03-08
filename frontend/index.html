@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metronome</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --border: #272727;
+    --accent: #e8c97d;
+    --accent-dim: #7a6b3a;
+    --text: #f0ede6;
+    --text-muted: #5a5a5a;
+    --red: #e07070;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .app {
+    width: 460px;
+    max-width: 96vw;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    padding: 24px 16px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 2.2rem;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  header a {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1px;
+    transition: color 0.2s;
+  }
+  header a:hover { color: var(--accent); }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .search-wrap input:focus { border-color: var(--accent-dim); }
+  .search-wrap input::placeholder { color: var(--text-muted); }
+
+  .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 10;
+    display: none;
+  }
+
+  .dropdown.open { display: block; }
+
+  .dropdown-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover, .dropdown-item.active { background: #1e1e1e; }
+
+  .dropdown-item .song-title { color: var(--text); }
+  .dropdown-item .song-meta { color: var(--text-muted); font-size: 0.75rem; }
+
+  /* Selected song display */
+  .song-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .song-card.visible { display: flex; }
+
+  .song-card .song-name {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.6rem;
+    line-height: 1.1;
+    color: var(--text);
+  }
+
+  .song-stats {
+    display: flex;
+    gap: 32px;
+  }
+
+  .stat-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  /* Pendulum */
+  .pendulum-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 0;
+  }
+
+  .pendulum-track {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    position: relative;
+    overflow: visible;
+  }
+
+  .pendulum-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0%;
+    transition: none;
+    box-shadow: 0 0 12px rgba(232, 201, 125, 0.5);
+  }
+
+  /* Beat indicators */
+  .beat-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .beat-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.05s, box-shadow 0.05s;
+  }
+  .beat-dot.lit {
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(232, 201, 125, 0.6);
+  }
+  .beat-dot.accent-beat {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Fade bar */
+  .fade-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .fade-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .fade-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    position: relative;
+  }
+
+  .fade-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.5s linear;
+  }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn-play {
+    flex: 1;
+    background: var(--accent);
+    color: #0e0e0e;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 16px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-play:hover { background: #f0d890; }
+  .btn-play:active { transform: scale(0.98); }
+  .btn-play.playing { background: var(--red); color: #fff; }
+  .btn-play.playing:hover { background: #f08080; }
+
+  .no-song-msg {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+
+  /* Status message */
+  .status-msg {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: center;
+    min-height: 1.2em;
+    letter-spacing: 0.04em;
+    transition: color 0.3s;
+  }
+  .status-msg.fading { color: var(--red); }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>Metronome</h1>
+    <a href="/admin">Admin</a>
+  </header>
+
+  <div class="search-wrap">
+    <input type="text" id="searchInput" placeholder="Search for a song..." autocomplete="off" />
+    <div class="dropdown" id="dropdown"></div>
+  </div>
+
+  <div class="song-card" id="songCard">
+    <div class="song-name" id="songName">—</div>
+    <div class="song-stats">
+      <div class="stat-block">
+        <span class="stat-label">BPM</span>
+        <span class="stat-value" id="statBpm">—</span>
+      </div>
+      <div class="stat-block">
+        <span class="stat-label">Fade out</span>
+        <span class="stat-value" id="statFade">—<span style="font-size:0.8rem;color:var(--text-muted)"> s</span></span>
+      </div>
+    </div>
+
+    <div class="pendulum-wrap">
+      <div class="beat-row" id="beatRow"></div>
+      <div class="pendulum-track">
+        <div class="pendulum-dot" id="pendulumDot"></div>
+      </div>
+    </div>
+
+    <div class="fade-section">
+      <div class="fade-label-row">
+        <span>Time elapsed</span>
+        <span id="fadeTimeLabel">0 / — s</span>
+      </div>
+      <div class="fade-bar-bg">
+        <div class="fade-bar-fill" id="fadeBarFill"></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-play" id="playBtn">▶ Play</button>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <div class="no-song-msg" id="noSongMsg">Search for a song to get started</div>
+
+</div>
+
+<script>
+const API = '';
+let selectedSong = null;
+let audioCtx = null;
+let metronomeInterval = null;
+let fadeTimeout = null;
+let fadeInterval = null;
+let startTime = null;
+let isPlaying = false;
+let currentGain = null;
+let beatCount = 0;
+let pendulumDir = 1;
+const BEATS_PER_BAR = 4;
+
+// --- Audio ---
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playClick(isAccent, gainValue = 1.0) {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+  const masterGain = ctx.createGain();
+
+  osc.connect(gainNode);
+  gainNode.connect(masterGain);
+  masterGain.connect(ctx.destination);
+
+  osc.frequency.value = isAccent ? 1000 : 700;
+  gainNode.gain.setValueAtTime(0.35 * gainValue, ctx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+  masterGain.gain.setValueAtTime(gainValue, ctx.currentTime);
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.06);
+}
+
+// --- Beat UI ---
+function buildBeatDots() {
+  const row = document.getElementById('beatRow');
+  row.innerHTML = '';
+  for (let i = 0; i < BEATS_PER_BAR; i++) {
+    const d = document.createElement('div');
+    d.className = 'beat-dot' + (i === 0 ? ' accent-beat' : '');
+    d.id = `beat-${i}`;
+    row.appendChild(d);
+  }
+}
+
+function lightBeat(idx) {
+  for (let i = 0; i < BEATS_PER_BAR; i++) {
+    const d = document.getElementById(`beat-${i}`);
+    if (d) d.classList.toggle('lit', i === idx);
+  }
+}
+
+// --- Pendulum ---
+function animatePendulum(progress) {
+  // progress 0..1 over one beat, direction alternates
+  const dot = document.getElementById('pendulumDot');
+  const pos = pendulumDir === 1
+    ? progress * 100
+    : 100 - progress * 100;
+  dot.style.left = `calc(${pos}% - 8px)`;
+}
+
+// --- Metronome ---
+function startMetronome(song) {
+  stopMetronome();
+  isPlaying = true;
+  beatCount = 0;
+  pendulumDir = 1;
+  startTime = Date.now();
+
+  const bpm = song.bpm;
+  const intervalMs = (60 / bpm) * 1000;
+  const fadeOutSecs = song.fade_out_seconds;
+  let currentGainVal = 1.0;
+
+  updatePlayBtn(true);
+  updateStatus('');
+  updateFadeBar(0, fadeOutSecs);
+
+  buildBeatDots();
+
+  // Tick function
+  let lastTick = Date.now();
+  let pendulumFrame = null;
+
+  function tick() {
+    const beatIdx = beatCount % BEATS_PER_BAR;
+    playClick(beatIdx === 0, currentGainVal);
+    lightBeat(beatIdx);
+    pendulumDir = beatIdx % 2 === 0 ? 1 : -1;
+    beatCount++;
+
+    // Animate pendulum over this beat
+    let startPendulum = Date.now();
+    if (pendulumFrame) cancelAnimationFrame(pendulumFrame);
+    function pendulumStep() {
+      const elapsed = Date.now() - startPendulum;
+      const progress = Math.min(elapsed / intervalMs, 1);
+      animatePendulum(progress);
+      if (progress < 1) pendulumFrame = requestAnimationFrame(pendulumStep);
+    }
+    pendulumStep();
+  }
+
+  tick(); // immediate first beat
+  metronomeInterval = setInterval(tick, intervalMs);
+
+  // Elapsed time bar
+  fadeInterval = setInterval(() => {
+    if (!isPlaying) return;
+    const elapsed = (Date.now() - startTime) / 1000;
+    updateFadeBar(elapsed, fadeOutSecs);
+  }, 200);
+
+  // Schedule fade out
+  fadeTimeout = setTimeout(() => {
+    updateStatus('Fading out…', true);
+    const fadeDuration = 3000; // 3s fade
+    const steps = 30;
+    let step = 0;
+    const fadeStepInterval = setInterval(() => {
+      step++;
+      currentGainVal = Math.max(0, 1 - step / steps);
+      if (step >= steps) {
+        clearInterval(fadeStepInterval);
+        stopMetronome();
+        updateStatus('Done');
+      }
+    }, fadeDuration / steps);
+  }, fadeOutSecs * 1000);
+}
+
+function stopMetronome() {
+  isPlaying = false;
+  if (metronomeInterval) { clearInterval(metronomeInterval); metronomeInterval = null; }
+  if (fadeTimeout) { clearTimeout(fadeTimeout); fadeTimeout = null; }
+  if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
+  for (let i = 0; i < BEATS_PER_BAR; i++) {
+    const d = document.getElementById(`beat-${i}`);
+    if (d) d.classList.remove('lit');
+  }
+  const dot = document.getElementById('pendulumDot');
+  if (dot) dot.style.left = '0%';
+  updatePlayBtn(false);
+}
+
+function updatePlayBtn(playing) {
+  const btn = document.getElementById('playBtn');
+  btn.textContent = playing ? '■ Stop' : '▶ Play';
+  btn.classList.toggle('playing', playing);
+}
+
+function updateStatus(msg, isFading = false) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.classList.toggle('fading', isFading);
+}
+
+function updateFadeBar(elapsed, total) {
+  const pct = Math.min(100, (elapsed / total) * 100);
+  document.getElementById('fadeBarFill').style.width = pct + '%';
+  document.getElementById('fadeTimeLabel').textContent =
+    `${Math.floor(elapsed)} / ${total} s`;
+}
+
+// --- Search ---
+const searchInput = document.getElementById('searchInput');
+const dropdown = document.getElementById('dropdown');
+
+let debounceTimer = null;
+searchInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => doSearch(searchInput.value), 150);
+});
+
+searchInput.addEventListener('focus', () => {
+  if (searchInput.value.trim() === '') doSearch('');
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-wrap')) closeDropdown();
+});
+
+async function doSearch(q) {
+  try {
+    const res = await fetch(`${API}/api/songs/search?q=${encodeURIComponent(q)}`);
+    const songs = await res.json();
+    renderDropdown(songs);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderDropdown(songs) {
+  dropdown.innerHTML = '';
+  if (!songs.length) {
+    dropdown.innerHTML = '<div class="dropdown-item"><span class="song-title" style="color:var(--text-muted)">No songs found</span></div>';
+    dropdown.classList.add('open');
+    return;
+  }
+  songs.forEach(song => {
+    const item = document.createElement('div');
+    item.className = 'dropdown-item';
+    item.innerHTML = `<span class="song-title">${song.title}</span><span class="song-meta">${song.bpm} bpm</span>`;
+    item.addEventListener('click', () => selectSong(song));
+    dropdown.appendChild(item);
+  });
+  dropdown.classList.add('open');
+}
+
+function closeDropdown() {
+  dropdown.classList.remove('open');
+}
+
+function selectSong(song) {
+  selectedSong = song;
+  searchInput.value = song.title;
+  closeDropdown();
+  stopMetronome();
+  updateStatus('');
+
+  document.getElementById('songName').textContent = song.title;
+  document.getElementById('statBpm').textContent = song.bpm;
+  document.getElementById('statFade').innerHTML = `${song.fade_out_seconds}<span style="font-size:0.8rem;color:var(--text-muted)"> s</span>`;
+  document.getElementById('fadeBarFill').style.width = '0%';
+  document.getElementById('fadeTimeLabel').textContent = `0 / ${song.fade_out_seconds} s`;
+  document.getElementById('songCard').classList.add('visible');
+  document.getElementById('noSongMsg').style.display = 'none';
+
+  buildBeatDots();
+}
+
+// --- Play button ---
+document.getElementById('playBtn').addEventListener('click', () => {
+  if (!selectedSong) return;
+  if (isPlaying) {
+    stopMetronome();
+    updateStatus('');
+  } else {
+    startMetronome(selectedSong);
+  }
+});
+
+// Initial load
+doSearch('');
+</script>
+</body>
+</html>

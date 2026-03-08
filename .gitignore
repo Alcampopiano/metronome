@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Database — do not commit song data
+backend/songs.db
+*.db
+
+# Environment variables
+.env
+
+# OS
+.DS_Store
+Thumbs.db
