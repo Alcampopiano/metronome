@@ -21,14 +21,15 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Auth config — set all of these as environment variables before deploying!
 # ---------------------------------------------------------------------------
-SECRET_KEY = os.environ.get("SECRET_KEY")
+DEV_MODE = os.environ.get("DEV_MODE", "").lower() == "true"
+
+SECRET_KEY = os.environ.get("SECRET_KEY") or ("dev-secret-key" if DEV_MODE else None)
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
-MFA_SECRET = os.environ.get("MFA_SECRET")  # Generate with: pyotp.random_base32()
+MFA_SECRET = os.environ.get("MFA_SECRET") or ("JBSWY3DPEHPK3PXP" if DEV_MODE else None)
 
-if not all([SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD, MFA_SECRET]):
+if not DEV_MODE and not all([SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD, MFA_SECRET]):
     raise RuntimeError("SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD and MFA_SECRET must all be set")
-
 COOKIE_NAME = "metronome_session"
 COOKIE_MAX_AGE = 60 * 60 * 8  # 8 hours
 MFA_PENDING_COOKIE = "metronome_mfa_pending"
@@ -58,6 +59,8 @@ def get_current_user(request: Request) -> Optional[str]:
     return verify_session_cookie(token)
 
 def require_auth(request: Request):
+    if DEV_MODE:
+        return "dev"
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=302, headers={"Location": "/login"})
@@ -145,14 +148,55 @@ def init_db():
     count = conn.execute("SELECT COUNT(*) FROM songs").fetchone()[0]
     if count == 0:
         seeds = [
-            ("Bohemian Rhapsody", 72, 45),
-            ("Stayin' Alive", 104, 30),
-            ("Sweet Home Alabama", 96, 40),
-            ("Hotel California", 75, 60),
-            ("Billie Jean", 117, 35),
-            ("Yesterday", 96, 50),
-            ("Roxanne", 132, 25),
-            ("Wonderwall", 87, 40),
+            ("Dreams - 2004 Remaster", 120, 10),
+            ("Mary Jane's Last Dance", 170, 10),
+            ("Jet Airliner", 123, 10),
+            ("If It Makes You Happy", 95, 10),
+            ("Jackson", 128, 10),
+            ("Take Me Home Country Roads - Original Version", 82, 10),
+            ("Tennessee Whiskey", 49, 10),
+            ("Give Me One Reason", 100, 10),
+            ("All Right Now", 120, 10),
+            ("Me and Bobby McGee", 93, 10),
+            ("Jolene", 111, 10),
+            ("Folsom Prison Blues", 111, 10),
+            ("These Boots Are Made for Walkin'", 83, 10),
+            ("My Church", 77, 10),
+            ("Drift Away", 152, 10),
+            ("Beast Of Burden - Remastered 1994", 101, 10),
+            ("Piece of My Heart", 161, 10),
+            ("Have You Ever Seen The Rain", 116, 10),
+            ("Chicken Fried", 170, 10),
+            ("Sweet Home Alabama", 98, 10),
+            ("(If You're Not In It For Love) I'm Outta Here!", 120, 10),
+            ("Chattahoochee", 175, 10),
+            ("Mama's Broken Heart", 112, 10),
+            ("Country Girl (Shake It For Me)", 106, 10),
+            ("Boot Scootin' Boogie", 130, 10),
+            ("Summer Of '69", 139, 10),
+            ("Wagon Wheel", 148, 10),
+            ("Fishing In The Dark", 78, 10),
+            ("Save a Horse (Ride a Cowboy)", 102, 10),
+            ("Friends in Low Places", 108, 10),
+            ("American Girl", 115, 10),
+            ("Honky Tonk Women", 119, 10),
+            ("Man! I Feel Like A Woman!", 125, 10),
+            ("Miss You - Remastered", 110, 10),
+            ("Highway to Hell", 116, 10),
+            ("Whiskey Glasses", 150, 10),
+            ("Fat Bottomed Girls", 178, 10),
+            ("Ring of Fire", 105, 10),
+            ("Redneck Woman", 185, 10),
+            ("Beer Never Broke My Heart", 77, 10),
+            ("A Bar Song (Tipsy)", 81, 10),
+            ("Pontoon", 96, 10),
+            ("She's Country", 172, 10),
+            ("Manchild", 123, 10),
+            ("Flowers", 118, 10),
+            ("Pink Pony Club", 107, 10),
+            ("Life is a Highway", 103, 10),
+            ("You Should Probably Leave", 184, 10),
+            ("you look like you love me (feat. Riley Green)", 129, 10),
         ]
         conn.executemany("INSERT INTO songs (title, bpm, fade_out_seconds) VALUES (?, ?, ?)", seeds)
     conn.commit()

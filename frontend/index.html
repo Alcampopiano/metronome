@@ -25,8 +25,9 @@
     font-family: 'DM Mono', monospace;
     min-height: 100vh;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    padding-top: 48px;
   }
 
   .app {
@@ -294,53 +295,69 @@
 <body>
 <div class="app">
 
-  <header>
-    <h1>Metronome</h1>
-    <a href="/admin">Admin</a>
-  </header>
+  <!-- VIEW 1: Song selection -->
+  <div id="viewSongs">
+    <header>
+      <h1>Songs</h1>
+      <div style="display:flex;gap:20px;align-items:center">
+        <a href="/admin">Admin</a>
+      </div>
+    </header>
 
-  <div class="search-wrap">
-    <input type="text" id="searchInput" placeholder="Search for a song..." autocomplete="off" />
-    <div class="dropdown" id="dropdown"></div>
+    <div class="search-wrap" style="margin-top:32px">
+      <input type="text" id="searchInput" placeholder="Search for a song..." autocomplete="off" />
+      <div class="dropdown" id="dropdown"></div>
+    </div>
+
+    <div class="no-song-msg" id="noSongMsg" style="margin-top:32px">Search for a song to get started</div>
   </div>
 
-  <div class="song-card" id="songCard">
-    <div class="song-name" id="songName">—</div>
-    <div class="song-stats">
-      <div class="stat-block">
-        <span class="stat-label">BPM</span>
-        <span class="stat-value" id="statBpm">—</span>
+  <!-- VIEW 2: Metronome -->
+  <div id="viewMetronome" style="display:none">
+    <header>
+      <h1>Metronome</h1>
+      <div style="display:flex;gap:20px;align-items:center">
+        <a href="#" id="backToSongs">Songs</a>
+        <a href="/admin">Admin</a>
       </div>
-      <div class="stat-block">
-        <span class="stat-label">Fade out</span>
-        <span class="stat-value" id="statFade">—<span style="font-size:0.8rem;color:var(--text-muted)"> s</span></span>
-      </div>
-    </div>
+    </header>
 
-    <div class="pendulum-wrap">
-      <div class="beat-row" id="beatRow"></div>
-      <div class="pendulum-track">
-        <div class="pendulum-dot" id="pendulumDot"></div>
+    <div class="song-card visible" id="songCard" style="margin-top:32px">
+      <div class="song-name" id="songName">—</div>
+      <div class="song-stats">
+        <div class="stat-block">
+          <span class="stat-label">BPM</span>
+          <span class="stat-value" id="statBpm">—</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-label">Fade out</span>
+          <span class="stat-value" id="statFade">—<span style="font-size:0.8rem;color:var(--text-muted)"> s</span></span>
+        </div>
       </div>
-    </div>
 
-    <div class="fade-section">
-      <div class="fade-label-row">
-        <span>Time elapsed</span>
-        <span id="fadeTimeLabel">0 / — s</span>
+      <div class="pendulum-wrap">
+        <div class="beat-row" id="beatRow"></div>
+        <div class="pendulum-track">
+          <div class="pendulum-dot" id="pendulumDot"></div>
+        </div>
       </div>
-      <div class="fade-bar-bg">
-        <div class="fade-bar-fill" id="fadeBarFill"></div>
-      </div>
-    </div>
 
-    <div class="btn-row">
-      <button class="btn-play" id="playBtn">▶ Play</button>
+      <div class="fade-section">
+        <div class="fade-label-row">
+          <span>Time elapsed</span>
+          <span id="fadeTimeLabel">0 / — s</span>
+        </div>
+        <div class="fade-bar-bg">
+          <div class="fade-bar-fill" id="fadeBarFill"></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-play" id="playBtn">▶ Play</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
     </div>
-    <div class="status-msg" id="statusMsg"></div>
   </div>
-
-  <div class="no-song-msg" id="noSongMsg">Search for a song to get started</div>
 
 </div>
 
@@ -576,11 +593,24 @@ function selectSong(song) {
   document.getElementById('statFade').innerHTML = `${song.fade_out_seconds}<span style="font-size:0.8rem;color:var(--text-muted)"> s</span>`;
   document.getElementById('fadeBarFill').style.width = '0%';
   document.getElementById('fadeTimeLabel').textContent = `0 / ${song.fade_out_seconds} s`;
-  document.getElementById('songCard').classList.add('visible');
-  document.getElementById('noSongMsg').style.display = 'none';
 
   buildBeatDots();
+  showView('metronome');
 }
+
+function showView(view) {
+  document.getElementById('viewSongs').style.display = view === 'songs' ? '' : 'none';
+  document.getElementById('viewMetronome').style.display = view === 'metronome' ? '' : 'none';
+}
+
+document.getElementById('backToSongs').addEventListener('click', (e) => {
+  e.preventDefault();
+  stopMetronome();
+  updateStatus('');
+  searchInput.value = '';
+  doSearch('');
+  showView('songs');
+});
 
 // --- Play button ---
 document.getElementById('playBtn').addEventListener('click', () => {
